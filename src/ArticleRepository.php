@@ -170,9 +170,12 @@ class ArticleRepository
 
         $conditions = [];
         foreach ($keywords as $i => $kw) {
-            $placeholder = ":kw_$i";
-            $binds[$placeholder] = '%' . $this->escapeLike($kw) . '%';
-            $conditions[] = "(title LIKE $placeholder OR description LIKE $placeholder)";
+            $phTitle = ":kw_t$i";
+            $phDesc  = ":kw_d$i";
+            $value = '%' . $this->escapeLike($kw) . '%';
+            $binds[$phTitle] = $value;
+            $binds[$phDesc]  = $value;
+            $conditions[] = "(title LIKE $phTitle OR description LIKE $phDesc)";
         }
 
         if ($logic === 'AND') {

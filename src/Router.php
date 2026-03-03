@@ -47,7 +47,7 @@ class Router
 
         self::json(['error' => 'Не найдено', 'available_endpoints' => [
             'GET  /' => 'Информация об API и доступных конечных точках',
-            'POST /api/fetch' => 'Загрузить RSS ленту и сохранить в БД',
+            'GET|POST /api/fetch' => 'Загрузить RSS ленту и сохранить в БД',
             'GET  /api/articles' => 'Список статей (с фильтрами, сортировкой, постраничной выдачей)',
             'GET  /api/articles/{id}' => 'Получить одну статью',
             'GET  /api/stats' => 'Статистика БД',

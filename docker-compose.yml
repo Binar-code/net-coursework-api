@@ -49,6 +49,8 @@ services:
       - |
         echo "0 */6 * * * wget -qO- --post-data='' http://app:80/api/fetch >> /var/log/rss-cron.log 2>&1" > /etc/crontabs/root
         echo "Cron запущен: загрузка RSS каждые 6 часов"
+        echo "Начальная загрузка RSS..."
+        sleep 30 && wget -qO- --post-data='' http://app:80/api/fetch >> /var/log/rss-cron.log 2>&1 &
         crond -f -l 2
     restart: unless-stopped
 

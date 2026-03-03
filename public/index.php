@@ -21,7 +21,7 @@ $router->get('', function () {
         'version' => '1.0.0',
         'endpoints' => [
             [
-                'method' => 'POST',
+                'method' => 'GET|POST',
                 'path' => '/api/fetch',
                 'description' => 'Загрузить RSS ленту Habr и сохранить новые статьи в БД',
             ],
@@ -67,6 +67,16 @@ $router->get('', function () {
 });
 
 $router->post('/api/fetch', function () {
+    try {
+        $fetcher = new RssFetcher();
+        $result = $fetcher->fetch();
+        Router::json($result);
+    } catch (Throwable $e) {
+        Router::json(['error' => $e->getMessage()], 500);
+    }
+});
+
+$router->get('/api/fetch', function () {
     try {
         $fetcher = new RssFetcher();
         $result = $fetcher->fetch();
