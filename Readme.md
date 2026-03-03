@@ -1,36 +1,38 @@
-# Habr RSS Feed API
+# API Ленты RSS Habr
 
-PHP + MySQL REST API server for fetching, storing and filtering articles from Habr RSS feed.
-Packaged with Docker for one-command deployment.
+PHP + MySQL REST API сервер для загрузки, хранения и фильтрации статей из RSS ленты Habr.
+Упакован в Docker для развёртывания одной командой.
 
-## Quick Start
+## Быстрый старт
 
 ```bash
-# Clone / copy the project, then:
+# Клонируйте или скопируйте проект, затем:
 docker-compose up -d --build
 
-# Wait ~10 seconds for MySQL to initialize, then fetch articles:
+# Подождите ~10 секунд инициализации MySQL, затем загрузите статьи:
 curl -X POST http://localhost:8080/api/fetch
 ```
 
-The API is now running at **http://localhost:8080**.
+API теперь работает по адресу **http://localhost:8080**.
+
+> **Примечание:** Если вы обновили проект и видите ошибку "table not found", выполните `docker-compose down -v && docker-compose up -d --build` для пересоздания контейнеров.
 
 ---
 
-## API Endpoints
+## Конечные точки API
 
 ### `GET /`
 
-Returns API info and list of all available endpoints with parameter descriptions.
+Возвращает информацию об API и список всех доступных конечных точек с описанием параметров.
 
 ---
 
 ### `POST /api/fetch`
 
-Fetches the Habr RSS feed and inserts new articles into the database.
-Call this periodically (e.g. via cron) to keep data fresh.
+Загружает RSS ленту Habr и добавляет новые статьи в базу данных.
+Вызывайте периодически (например, через cron) для обновления данных.
 
-**Response:**
+**Ответ:**
 ```json
 {
   "success": true,
@@ -44,72 +46,93 @@ Call this periodically (e.g. via cron) to keep data fresh.
 
 ### `GET /api/articles`
 
-List articles with filtering, sorting, and pagination.
+Получить список статей с фильтрацией, сортировкой и постраничной выдачей.
 
-#### Pagination
+#### Постраничная выдача
 
-| Param      | Type | Default | Description              |
-|------------|------|---------|--------------------------|
-| `page`     | int  | 1       | Page number              |
-| `per_page` | int  | 20      | Items per page (max 100) |
+| Параметр   | Тип | По умолчанию | Описание              |
+|------------|-----|--------------|----------------------|
+| `page`     | int | 1            | Номер страницы       |
+| `per_page` | int | 20           | Статей на странице (максимум 100) |
 
-#### Sorting
+#### Сортировка
 
-| Param        | Type   | Default        | Values                                              |
-|--------------|--------|----------------|------------------------------------------------------|
+| Параметр     | Тип    | По умолчанию   | Значения                                              |
+|--------------|--------|----------------|-------------------------------------------------------|
 | `sort_by`    | string | `published_at` | `published_at`, `fetched_at`, `description_len`, `title` |
-| `sort_order` | string | `desc`         | `asc`, `desc`                                        |
+| `sort_order` | string | `desc`         | `asc`, `desc`                                         |
 
-#### Filters
+#### Фильтры
 
-| Param          | Type   | Description                         |
-|----------------|--------|-------------------------------------|
-| `date_from`    | string | Published after (ISO date)          |
-| `date_to`      | string | Published before (ISO date)         |
-| `desc_len_min` | int    | Min description length (chars)      |
-| `desc_len_max` | int    | Max description length (chars)      |
-| `keywords`     | string | Comma-separated, **max 3** keywords |
-| `keyword_logic`| string | `AND` / `OR` / `NOT` (default `AND`)|
+| Параметр       | Тип    | Описание                           |
+|----------------|--------|-----------------------------------|
+| `date_from`    | string | Опубликовано после (ISO дата)     |
+| `date_to`      | string | Опубликовано до (ISO дата)        |
+| `desc_len_min` | int    | Минимальная длина описания (символы) |
+| `desc_len_max` | int    | Максимальная длина описания (символы) |
+| `keywords`     | string | Слова через запятую, **максимум 3** |
+| `keyword_logic`| string | `AND` / `OR` / `NOT` (по умолчанию `AND`)|
 
-**Keyword logic explained:**
-- `AND` — article must contain **all** specified keywords (in title or description)
-- `OR`  — article must contain **at least one** keyword
-- `NOT` — article must contain **none** of the keywords
+#### Структура статьи в ответе
 
-#### Examples
+Каждая статья содержит следующие поля:
+
+| Поле              | Тип              | Описание                                  |
+|-------------------|------------------|-------------------------------------------|
+| `id`              | int              | Уникальный ID статьи                      |
+| `title`           | string           | Название статьи                           |
+| `link`            | string           | Ссылка на статью                          |
+| `description`     | string           | Текст описания статьи                     |
+| `published_at`    | string (datetime)| Дата публикации в формате ISO             |
+| `fetched_at`      | string (datetime)| Дата загрузки в БД в формате ISO         |
+| `description_len` | int              | Длина описания в символах                 |
+| `tags`            | array            | Массив тегов/категорий статьи             |
+| `tags[].id`       | int              | ID тега                                   |
+| `tags[].name`     | string           | Название тега                            |
+
+**Объяснение логики ключевых слов:**
+- `AND` — статья должна содержать **все** указанные ключевые слова (в названии или описании)
+- `OR`  — статья должна содержать **хотя бы одно** ключевое слово
+- `NOT` — статья не должна содержать **никакие** ключевые слова
+
+#### Примеры
 
 ```bash
-# Latest 10 articles
+# Последние 10 статей
 curl "http://localhost:8080/api/articles?per_page=10"
 
-# Articles from March 2026, sorted by description length
+# Статьи из марта 2026, отсортированные по длине описания
 curl "http://localhost:8080/api/articles?date_from=2026-03-01&date_to=2026-03-31&sort_by=description_len&sort_order=desc"
 
-# Short descriptions only (under 200 chars)
+# Только короткие описания (менее 200 символов)
 curl "http://localhost:8080/api/articles?desc_len_max=200"
 
-# Articles containing "Python" AND "AI"
+# Статьи, содержащие "Python" И "AI"
 curl "http://localhost:8080/api/articles?keywords=Python,AI&keyword_logic=AND"
 
-# Articles containing "Go" OR "Rust"
+# Статьи, содержащие "Go" ИЛИ "Rust"
 curl "http://localhost:8080/api/articles?keywords=Go,Rust&keyword_logic=OR"
 
-# Exclude articles about JavaScript
+# Исключить статьи о JavaScript
 curl "http://localhost:8080/api/articles?keywords=JavaScript&keyword_logic=NOT"
 ```
 
-**Response:**
+**Ответ:**
 ```json
 {
   "data": [
     {
       "id": 1,
-      "title": "Article title",
+      "title": "Название статьи",
       "link": "https://habr.com/...",
-      "description": "Article description text...",
+      "description": "Текст описания статьи...",
       "published_at": "2026-03-03 12:00:00",
       "fetched_at": "2026-03-03 14:30:00",
-      "description_len": 342
+      "description_len": 342,
+      "tags": [
+        {"id": 5, "name": "Python"},
+        {"id": 12, "name": "Веб-разработка"}
+      ]
     }
   ],
   "pagination": {
@@ -129,17 +152,35 @@ curl "http://localhost:8080/api/articles?keywords=JavaScript&keyword_logic=NOT"
 
 ### `GET /api/articles/{id}`
 
-Get a single article by its ID.
+Получить одну статью по её ID. Возвращает статью со всеми её тегами.
 
 ```bash
 curl http://localhost:8080/api/articles/42
+```
+
+**Пример ответа:**
+```json
+{
+  "id": 42,
+  "title": "Интересная статья",
+  "link": "https://habr.com/...",
+  "description": "Описание статьи...",
+  "published_at": "2026-03-03 12:00:00",
+  "fetched_at": "2026-03-03 14:30:00",
+  "description_len": 500,
+  "tags": [
+    {"id": 1, "name": "Python"},
+    {"id": 2, "name": "Алгоритмы"},
+    {"id": 3, "name": "Оптимизация"}
+  ]
+}
 ```
 
 ---
 
 ### `GET /api/stats`
 
-Database statistics: total articles, date range, average description length.
+Статистика базы данных: общее количество статей, диапазон дат, средняя длина описания.
 
 ```bash
 curl http://localhost:8080/api/stats
@@ -147,46 +188,59 @@ curl http://localhost:8080/api/stats
 
 ---
 
-## Database Schema
+## Схема базы данных
 
 ```sql
 CREATE TABLE articles (
-    id              BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    title           VARCHAR(512)    NOT NULL,
-    link            VARCHAR(2048)   NOT NULL,
-    description     TEXT            NOT NULL,
-    published_at    DATETIME        NOT NULL,
-    fetched_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    description_len INT UNSIGNED    NOT NULL DEFAULT 0,
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(512) NOT NULL,
+    link VARCHAR(2048) NOT NULL,
+    description TEXT NOT NULL,
+    published_at DATETIME NOT NULL,
+    fetched_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    description_len INT UNSIGNED NOT NULL DEFAULT 0,
+    UNIQUE KEY uq_link (link(768)),
+    INDEX idx_published (published_at),
+    INDEX idx_fetched (fetched_at),
+    INDEX idx_desc_len (description_len),
+    FULLTEXT idx_ft_search (title, description)
+);
 
-    UNIQUE KEY  uq_link       (link(768)),
-    INDEX       idx_published (published_at),
-    INDEX       idx_fetched   (fetched_at),
-    INDEX       idx_desc_len  (description_len),
-    FULLTEXT    idx_ft_search (title, description)
+CREATE TABLE tags (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    INDEX idx_name (name)
+);
+
+CREATE TABLE article_tags (
+    article_id BIGINT UNSIGNED NOT NULL,
+    tag_id INT UNSIGNED NOT NULL,
+    PRIMARY KEY (article_id, tag_id),
+    FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
 );
 ```
 
 ---
 
-## Configuration
+## Конфигурация
 
-Environment variables (set in `docker-compose.yml`):
+Переменные окружения (установлены в `docker-compose.yml`):
 
-| Variable  | Default                              | Description        |
+| Переменная | По умолчанию                        | Описание        |
 |-----------|--------------------------------------|--------------------|
-| `DB_HOST` | `db`                                 | MySQL host         |
-| `DB_PORT` | `3306`                               | MySQL port         |
-| `DB_NAME` | `rss_feed`                           | Database name      |
-| `DB_USER` | `rss_user`                           | Database user      |
-| `DB_PASS` | `rss_secret`                         | Database password  |
-| `RSS_URL` | `https://habr.com/ru/rss/articles/`  | RSS feed URL       |
+| `DB_HOST` | `db`                                 | Хост MySQL         |
+| `DB_PORT` | `3306`                               | Порт MySQL         |
+| `DB_NAME` | `rss_feed`                           | Имя базы данных    |
+| `DB_USER` | `rss_user`                           | Пользователь БД    |
+| `DB_PASS` | `rss_secret`                         | Пароль БД          |
+| `RSS_URL` | `https://habr.com/ru/rss/articles/`  | URL RSS ленты      |
 
 ---
 
-## Periodic Fetching (Cron)
+## Периодическая загрузка (Cron)
 
-To auto-fetch new articles every 15 minutes, add to crontab on the host:
+Для автоматической загрузки новых статей каждые 15 минут добавьте в crontab хоста:
 
 ```bash
 */15 * * * * curl -s -X POST http://localhost:8080/api/fetch > /dev/null 2>&1
@@ -194,9 +248,10 @@ To auto-fetch new articles every 15 minutes, add to crontab on the host:
 
 ---
 
-## Stopping
+
+## Остановка
 
 ```bash
-docker-compose down          # stop containers, keep data
-docker-compose down -v       # stop and delete MySQL data
+docker-compose down          # остановить контейнеры, сохранить данные
+docker-compose down -v       # остановить и удалить данные MySQL
 ```

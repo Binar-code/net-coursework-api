@@ -64,7 +64,10 @@ class ArticleRepository
 
         $countSql = "SELECT COUNT(*) AS total FROM articles $whereClause";
         $countStmt = $this->pdo->prepare($countSql);
-        $countStmt->execute($binds);
+        foreach ($binds as $k => $v) {
+            $countStmt->bindValue($k, $v);
+        }
+        $countStmt->execute();
         $total = (int) $countStmt->fetchColumn();
 
         $sql = "
@@ -83,6 +86,11 @@ class ArticleRepository
         $stmt->execute();
 
         $articles = $stmt->fetchAll();
+
+        // Load tags for each article
+        foreach ($articles as &$article) {
+            $article['tags'] = $this->getArticleTags($article['id']);
+        }
 
         return [
             'data' => $articles,
@@ -111,6 +119,8 @@ class ArticleRepository
         if ($row === false) {
             return null;
         }
+
+        $row['tags'] = $this->getArticleTags($id);
 
         return $row;
     }
@@ -181,5 +191,18 @@ class ArticleRepository
     private function escapeLike(string $value): string
     {
         return str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $value);
+    }
+
+    private function getArticleTags(int $articleId): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT t.id, t.name
+            FROM tags t
+            JOIN article_tags at ON t.id = at.tag_id
+            WHERE at.article_id = :article_id
+            ORDER BY t.name
+        ");
+        $stmt->execute([':article_id' => $articleId]);
+        return $stmt->fetchAll();
     }
 }

@@ -17,40 +17,50 @@ $router = new Router();
 
 $router->get('', function () {
     Router::json([
-        'name' => 'Habr RSS Feed API',
+        'name' => 'API Ленты RSS Habr',
         'version' => '1.0.0',
         'endpoints' => [
             [
                 'method' => 'POST',
                 'path' => '/api/fetch',
-                'description' => 'Fetch RSS feed from Habr and store new articles in DB',
+                'description' => 'Загрузить RSS ленту Habr и сохранить новые статьи в БД',
             ],
             [
                 'method' => 'GET',
                 'path' => '/api/articles',
-                'description' => 'List articles with filters, sorting, pagination',
+                'description' => 'Список статей с фильтрами, сортировкой, постраничной выдачей и тегами',
                 'params' => [
-                    'page' => 'int — page number (default 1)',
-                    'per_page' => 'int — items per page (default 20, max 100)',
-                    'sort_by' => 'string — published_at | fetched_at | description_len | title (default published_at)',
-                    'sort_order' => 'string — asc | desc (default desc)',
-                    'date_from' => 'string — ISO date, e.g. 2025-01-01',
-                    'date_to' => 'string — ISO date, e.g. 2025-12-31',
-                    'desc_len_min' => 'int — minimum description length in chars',
-                    'desc_len_max' => 'int — maximum description length in chars',
-                    'keywords' => 'string — comma-separated, max 3 keywords',
-                    'keyword_logic' => 'string — AND | OR | NOT (default AND)',
+                    'page' => 'int — номер страницы (по умолчанию 1)',
+                    'per_page' => 'int — статей на странице (по умолчанию 20, максимум 100)',
+                    'sort_by' => 'string — published_at | fetched_at | description_len | title (по умолчанию published_at)',
+                    'sort_order' => 'string — asc | desc (по умолчанию desc)',
+                    'date_from' => 'string — ISO дата, например 2025-01-01',
+                    'date_to' => 'string — ISO дата, например 2025-12-31',
+                    'desc_len_min' => 'int — минимальная длина описания в символах',
+                    'desc_len_max' => 'int — максимальная длина описания в символах',
+                    'keywords' => 'string — слова через запятую, максимум 3 слова',
+                    'keyword_logic' => 'string — AND | OR | NOT (по умолчанию AND)',
+                ],
+                'fields' => [
+                    'id' => 'int — уникальный ID статьи',
+                    'title' => 'string — название статьи',
+                    'link' => 'string — ссылка на статью',
+                    'description' => 'string — описание статьи',
+                    'published_at' => 'string — дата публикации (ISO)',
+                    'fetched_at' => 'string — дата добавления в БД (ISO)',
+                    'description_len' => 'int — длина описания в символах',
+                    'tags' => 'array — массив тегов статьи ({id, name})',
                 ],
             ],
             [
                 'method' => 'GET',
                 'path' => '/api/articles/{id}',
-                'description' => 'Get single article by ID',
+                'description' => 'Получить одну статью по ID со всеми её тегами',
             ],
             [
                 'method' => 'GET',
                 'path' => '/api/stats',
-                'description' => 'Database statistics',
+                'description' => 'Статистика базы данных',
             ],
         ],
     ]);
@@ -82,7 +92,7 @@ $router->get('/api/articles/{id}', function (array $params) {
         $article = $repo->getById((int) $params['id']);
 
         if ($article === null) {
-            Router::json(['error' => 'Article not found'], 404);
+            Router::json(['error' => 'Статья не найдена'], 404);
         }
 
         Router::json(['data' => $article]);

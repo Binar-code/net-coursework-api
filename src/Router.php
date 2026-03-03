@@ -45,12 +45,12 @@ class Router
             }
         }
 
-        self::json(['error' => 'Not Found', 'available_endpoints' => [
-            'GET  /' => 'API info & available endpoints',
-            'POST /api/fetch' => 'Fetch RSS feed and store in DB',
-            'GET  /api/articles' => 'List articles (with filters, sorting, pagination)',
-            'GET  /api/articles/{id}' => 'Get single article',
-            'GET  /api/stats' => 'DB statistics',
+        self::json(['error' => 'Не найдено', 'available_endpoints' => [
+            'GET  /' => 'Информация об API и доступных конечных точках',
+            'POST /api/fetch' => 'Загрузить RSS ленту и сохранить в БД',
+            'GET  /api/articles' => 'Список статей (с фильтрами, сортировкой, постраничной выдачей)',
+            'GET  /api/articles/{id}' => 'Получить одну статью',
+            'GET  /api/stats' => 'Статистика БД',
         ]], 404);
     }
 
@@ -62,7 +62,7 @@ class Router
         header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
         header('Access-Control-Allow-Headers: Content-Type');
 
-        echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
         exit;
     }
 }
