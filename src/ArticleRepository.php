@@ -40,25 +40,12 @@ class ArticleRepository
         $where = [];
         $binds = [];
 
-        if (!empty($params['date_from'])) {
-            $where[] = 'published_at >= :date_from';
-            $binds[':date_from'] = $params['date_from'];
+        if (!empty($params['filter'])) {
+            $filterCondition = $this->parseFilter($params['filter'], $binds);
+            if ($filterCondition !== '') {
+                $where[] = $filterCondition;
+            }
         }
-        if (!empty($params['date_to'])) {
-            $where[] = 'published_at <= :date_to';
-            $binds[':date_to'] = $params['date_to'];
-        }
-
-        if (isset($params['desc_len_min']) && $params['desc_len_min'] !== '') {
-            $where[] = 'description_len >= :desc_len_min';
-            $binds[':desc_len_min'] = (int) $params['desc_len_min'];
-        }
-        if (isset($params['desc_len_max']) && $params['desc_len_max'] !== '') {
-            $where[] = 'description_len <= :desc_len_max';
-            $binds[':desc_len_max'] = (int) $params['desc_len_max'];
-        }
-
-        $this->applyKeywordFilter($params, $where, $binds);
 
         $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
@@ -144,51 +131,104 @@ class ArticleRepository
         return $row;
     }
 
-    private function applyKeywordFilter(array $params, array &$where, array &$binds): void
+    private function parseFilter(string $filter, array &$binds): string
     {
-        if (empty($params['keywords'])) {
-            return;
-        }
+        $parts = preg_split('/(_AND_|_OR_|_NOT_)/', $filter, -1, PREG_SPLIT_DELIM_CAPTURE);
 
-        $raw = array_map('trim', explode(',', $params['keywords']));
-        $filtered = [];
-        foreach ($raw as $k) {
-            if ($k !== '') {
-                $filtered[] = $k;
+        $segments = [];
+        $operators = [];
+
+        foreach ($parts as $part) {
+            $trimmed = trim($part);
+            if ($trimmed === '') continue;
+            if (in_array($trimmed, ['_AND_', '_OR_', '_NOT_'], true)) {
+                $operators[] = trim($trimmed, '_');
+            } else {
+                $segments[] = $trimmed;
             }
         }
-        $keywords = array_slice($filtered, 0, 3);
 
-        if (empty($keywords)) {
-            return;
-        }
-
-        $logic = isset($params['keyword_logic']) ? strtoupper($params['keyword_logic']) : 'AND';
-        if (!in_array($logic, ['AND', 'OR', 'NOT'], true)) {
-            $logic = 'AND';
-        }
+        $segments = array_slice($segments, 0, 3);
 
         $conditions = [];
-        foreach ($keywords as $i => $kw) {
-            $phTitle = ":kw_t$i";
-            $phDesc  = ":kw_d$i";
-            $value = '%' . $this->escapeLike($kw) . '%';
-            $binds[$phTitle] = $value;
-            $binds[$phDesc]  = $value;
-            $conditions[] = "(title LIKE $phTitle OR description LIKE $phDesc)";
+        foreach ($segments as $i => $seg) {
+            $cond = $this->buildFilterCondition($seg, $i, $binds);
+            if ($cond !== '') {
+                $conditions[] = $cond;
+            }
         }
 
-        if ($logic === 'AND') {
-            $where[] = '(' . implode(' AND ', $conditions) . ')';
-        } elseif ($logic === 'OR') {
-            $where[] = '(' . implode(' OR ', $conditions) . ')';
-        } elseif ($logic === 'NOT') {
-            $negated = [];
-            foreach ($conditions as $condition) {
-                $negated[] = 'NOT ' . $condition;
+        if (empty($conditions)) return '';
+        if (count($conditions) === 1) return $conditions[0];
+
+        $result = $conditions[0];
+        for ($i = 1; $i < count($conditions); $i++) {
+            $op = isset($operators[$i - 1]) ? $operators[$i - 1] : 'AND';
+            if ($op === 'NOT') {
+                $result = "($result AND NOT {$conditions[$i]})";
+            } else {
+                $result = "($result $op {$conditions[$i]})";
             }
-            $where[] = '(' . implode(' AND ', $negated) . ')';
         }
+
+        return $result;
+    }
+
+    private function buildFilterCondition(string $segment, int $index, array &$binds): string
+    {
+        $pos = strpos($segment, '=');
+        if ($pos === false) return '';
+
+        $type = strtolower(substr($segment, 0, $pos));
+        $value = substr($segment, $pos + 1);
+
+        if ($value === '' || $value === false) return '';
+
+        switch ($type) {
+            case 'date':
+                return $this->buildDateCondition($value, $index, $binds);
+            case 'desc_len':
+                return $this->buildDescLenCondition($value, $index, $binds);
+            case 'keywords':
+                return $this->buildKeywordCondition($value, $index, $binds);
+            default:
+                return '';
+        }
+    }
+
+    private function buildDateCondition(string $value, int $index, array &$binds): string
+    {
+        if (strpos($value, '..') !== false) {
+            [$from, $to] = explode('..', $value, 2);
+            $binds[":df$index"] = $from;
+            if (strlen($to) === 10) {
+                $to .= ' 23:59:59';
+            }
+            $binds[":dt$index"] = $to;
+            return "(fetched_at >= :df$index AND fetched_at <= :dt$index)";
+        }
+        $binds[":df$index"] = $value;
+        return "(fetched_at >= :df$index)";
+    }
+
+    private function buildDescLenCondition(string $value, int $index, array &$binds): string
+    {
+        if (strpos($value, '..') !== false) {
+            [$min, $max] = explode('..', $value, 2);
+            $binds[":dlmin$index"] = (int) $min;
+            $binds[":dlmax$index"] = (int) $max;
+            return "(description_len >= :dlmin$index AND description_len <= :dlmax$index)";
+        }
+        $binds[":dl$index"] = (int) $value;
+        return "(description_len >= :dl$index)";
+    }
+
+    private function buildKeywordCondition(string $value, int $index, array &$binds): string
+    {
+        $escaped = '%' . $this->escapeLike($value) . '%';
+        $binds[":kwt$index"] = $escaped;
+        $binds[":kwd$index"] = $escaped;
+        return "(title LIKE :kwt$index OR description LIKE :kwd$index)";
     }
 
     private function escapeLike(string $value): string

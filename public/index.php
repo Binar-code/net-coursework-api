@@ -34,12 +34,7 @@ $router->get('', function () {
                     'per_page' => 'int — статей на странице (по умолчанию 20, максимум 100)',
                     'sort_by' => 'string — published_at | fetched_at | description_len | title (по умолчанию published_at)',
                     'sort_order' => 'string — asc | desc (по умолчанию desc)',
-                    'date_from' => 'string — ISO дата, например 2025-01-01',
-                    'date_to' => 'string — ISO дата, например 2025-12-31',
-                    'desc_len_min' => 'int — минимальная длина описания в символах',
-                    'desc_len_max' => 'int — максимальная длина описания в символах',
-                    'keywords' => 'string — слова через запятую, максимум 3 слова',
-                    'keyword_logic' => 'string — AND | OR | NOT (по умолчанию AND)',
+                    'filter' => 'string — до 3-х условий с логическими связками _AND_, _OR_, _NOT_. Типы: date (дата добавления), desc_len (размер описания), keywords (ключевое слово). Формат: тип=значение_ОПЕРАТОР_тип=значение. Пример: date=2026-01-01..2026-12-31_AND_keywords=Python',
                 ],
                 'fields' => [
                     'id' => 'int — уникальный ID статьи',

@@ -64,14 +64,25 @@ API теперь работает по адресу **http://localhost:8080**.
 
 #### Фильтры
 
-| Параметр       | Тип    | Описание                           |
-|----------------|--------|-----------------------------------|
-| `date_from`    | string | Опубликовано после (ISO дата)     |
-| `date_to`      | string | Опубликовано до (ISO дата)        |
-| `desc_len_min` | int    | Минимальная длина описания (символы) |
-| `desc_len_max` | int    | Максимальная длина описания (символы) |
-| `keywords`     | string | Слова через запятую, **максимум 3** |
-| `keyword_logic`| string | `AND` / `OR` / `NOT` (по умолчанию `AND`)|
+Параметр `filter` позволяет комбинировать до **3-х условий** фильтрации с логическими связками `AND`, `OR`, `NOT`.
+
+**Формат:** `filter=тип=значение_ОПЕРАТОР_тип=значение`
+
+**Типы фильтров:**
+
+| Тип        | Описание                | Формат значения                              |
+|------------|------------------------|----------------------------------------------|
+| `date`     | По дате добавления     | `YYYY-MM-DD` или диапазон `YYYY-MM-DD..YYYY-MM-DD` |
+| `desc_len` | По размеру описания    | число или диапазон `мин..макс`               |
+| `keywords` | По ключевому слову     | строка (поиск в названии и описании)         |
+
+**Логические связки (между типами фильтров):**
+
+| Оператор | Описание                                        |
+|----------|------------------------------------------------|
+| `_AND_`  | Оба условия должны выполняться                  |
+| `_OR_`   | Достаточно выполнения хотя бы одного условия    |
+| `_NOT_`  | Следующее условие исключается (AND NOT)          |
 
 #### Структура статьи в ответе
 
@@ -90,31 +101,26 @@ API теперь работает по адресу **http://localhost:8080**.
 | `tags[].id`       | int              | ID тега                                   |
 | `tags[].name`     | string           | Название тега                            |
 
-**Объяснение логики ключевых слов:**
-- `AND` — статья должна содержать **все** указанные ключевые слова (в названии или описании)
-- `OR`  — статья должна содержать **хотя бы одно** ключевое слово
-- `NOT` — статья не должна содержать **никакие** ключевые слова
-
 #### Примеры
 
 ```bash
 # Последние 10 статей
 curl "http://localhost:8080/api/articles?per_page=10"
 
-# Статьи из марта 2026, отсортированные по длине описания
-curl "http://localhost:8080/api/articles?date_from=2026-03-01&date_to=2026-03-31&sort_by=description_len&sort_order=desc"
+# Статьи за март 2026 с ключевым словом Python
+curl "http://localhost:8080/api/articles?filter=date=2026-03-01..2026-03-31_AND_keywords=Python"
 
-# Только короткие описания (менее 200 символов)
-curl "http://localhost:8080/api/articles?desc_len_max=200"
+# Статьи с Python ИЛИ Rust
+curl "http://localhost:8080/api/articles?filter=keywords=Python_OR_keywords=Rust"
 
-# Статьи, содержащие "Python" И "AI"
-curl "http://localhost:8080/api/articles?keywords=Python,AI&keyword_logic=AND"
+# Короткие описания (до 200 символов), исключая JavaScript
+curl "http://localhost:8080/api/articles?filter=desc_len=0..200_NOT_keywords=JavaScript"
 
-# Статьи, содержащие "Go" ИЛИ "Rust"
-curl "http://localhost:8080/api/articles?keywords=Go,Rust&keyword_logic=OR"
+# Статьи добавленные после 2026-03-01, отсортированные по длине описания
+curl "http://localhost:8080/api/articles?filter=date=2026-03-01&sort_by=description_len&sort_order=desc"
 
-# Исключить статьи о JavaScript
-curl "http://localhost:8080/api/articles?keywords=JavaScript&keyword_logic=NOT"
+# Комбинация трёх фильтров: дата + размер описания + ключевое слово
+curl "http://localhost:8080/api/articles?filter=date=2026-01-01..2026-12-31_AND_desc_len=100..500_AND_keywords=Python"
 ```
 
 **Ответ:**
