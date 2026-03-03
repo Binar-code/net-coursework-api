@@ -1,0 +1,56 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    volumes:
+      - ./public:/var/www/html/public
+      - ./src:/var/www/html/src
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: rss_feed
+      DB_USER: rss_user
+      DB_PASS: rss_secret
+      RSS_URL: "https://habr.com/ru/rss/articles/"
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secret
+      MYSQL_DATABASE: rss_feed
+      MYSQL_USER: rss_user
+      MYSQL_PASSWORD: rss_secret
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_secret"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  cron:
+    image: alpine:3.19
+    depends_on:
+      - app
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo "0 */6 * * * wget -qO- --post-data='' http://app:80/api/fetch >> /var/log/rss-cron.log 2>&1" > /etc/crontabs/root
+        echo "Cron started: fetching RSS every 6 hours"
+        crond -f -l 2
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
