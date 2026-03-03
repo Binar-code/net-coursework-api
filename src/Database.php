@@ -2,7 +2,7 @@
 
 class Database
 {
-    private static ?PDO $pdo = null;
+    private static $pdo = null;
 
     public static function connect(): PDO
     {
@@ -10,11 +10,20 @@ class Database
             return self::$pdo;
         }
 
-        $host = getenv('DB_HOST') ?: '127.0.0.1';
-        $port = getenv('DB_PORT') ?: '3306';
-        $name = getenv('DB_NAME') ?: 'rss_feed';
-        $user = getenv('DB_USER') ?: 'rss_user';
-        $pass = getenv('DB_PASS') ?: 'rss_secret';
+        $host = getenv('DB_HOST');
+        if ($host === false) { $host = '127.0.0.1'; }
+
+        $port = getenv('DB_PORT');
+        if ($port === false) { $port = '3306'; }
+
+        $name = getenv('DB_NAME');
+        if ($name === false) { $name = 'rss_feed'; }
+
+        $user = getenv('DB_USER');
+        if ($user === false) { $user = 'rss_user'; }
+
+        $pass = getenv('DB_PASS');
+        if ($pass === false) { $pass = 'rss_secret'; }
 
         $dsn = "mysql:host=$host;port=$port;dbname=$name;charset=utf8mb4";
 

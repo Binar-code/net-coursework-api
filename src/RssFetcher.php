@@ -9,14 +9,13 @@ class RssFetcher
 
     public function __construct()
     {
-        $this->pdo     = Database::connect();
-        $this->feedUrl = getenv('RSS_URL') ?: 'https://habr.com/ru/rss/articles/';
+        $this->pdo = Database::connect();
+
+        $url = getenv('RSS_URL');
+        if ($url === false) { $url = 'https://habr.com/ru/rss/articles/'; }
+        $this->feedUrl = $url;
     }
 
-    /**
-     * Fetch RSS feed, parse items, insert new articles.
-     * Returns count of newly inserted articles.
-     */
     public function fetch(): array
     {
         $xml = $this->loadFeed();
@@ -37,8 +36,6 @@ class RssFetcher
             $link        = trim((string) $item->link);
             $description = $this->cleanText((string) $item->description);
             $pubDate     = (string) $item->pubDate;
-
-            // Parse publication date to MySQL datetime
             $publishedAt = date('Y-m-d H:i:s', strtotime($pubDate));
 
             $stmt->execute([
@@ -64,9 +61,8 @@ class RssFetcher
         ];
     }
 
-    private function loadFeed(): SimpleXMLElement|false
+    private function loadFeed()
     {
-        // Use cURL for better control over headers (Habr may block default PHP UA)
         $ch = curl_init($this->feedUrl);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -86,12 +82,15 @@ class RssFetcher
         $xml = simplexml_load_string($body);
         libxml_clear_errors();
 
-        return $xml ?: false;
+        if ($xml === false) {
+            return false;
+        }
+
+        return $xml;
     }
 
     private function cleanText(string $text): string
     {
-        // Strip HTML tags, decode entities, trim whitespace
         $text = strip_tags($text);
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         return trim($text);

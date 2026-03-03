@@ -11,50 +11,35 @@ class ArticleRepository
         $this->pdo = Database::connect();
     }
 
-    /**
-     * Get articles with filters, sorting, and pagination.
-     *
-     * Supported query params:
-     *   -- Pagination --
-     *   page           int    (default 1)
-     *   per_page       int    (default 20, max 100)
-     *
-     *   -- Sorting --
-     *   sort_by        string (published_at|fetched_at|description_len|title)  default published_at
-     *   sort_order     string (asc|desc)  default desc
-     *
-     *   -- Filters --
-     *   date_from      string  ISO date  (published_at >= ...)
-     *   date_to        string  ISO date  (published_at <= ...)
-     *   desc_len_min   int     minimum description length
-     *   desc_len_max   int     maximum description length
-     *
-     *   -- Keyword filter (up to 3 keywords with logic) --
-     *   keywords       string  comma-separated, max 3 words
-     *   keyword_logic  string  AND | OR | NOT   (default AND)
-     *       AND  — article must contain ALL keywords
-     *       OR   — article must contain at least ONE keyword
-     *       NOT  — article must contain NONE of the keywords
-     */
     public function list(array $params): array
     {
-        // ── Pagination ──────────────────────────────────────
-        $page    = max(1, (int) ($params['page'] ?? 1));
-        $perPage = min(100, max(1, (int) ($params['per_page'] ?? 20)));
-        $offset  = ($page - 1) * $perPage;
+        $page = isset($params['page']) ? (int) $params['page'] : 1;
+        if ($page < 1) { $page = 1; }
 
-        // ── Sorting ─────────────────────────────────────────
-        $allowedSort  = ['published_at', 'fetched_at', 'description_len', 'title', 'id'];
-        $sortBy       = in_array($params['sort_by'] ?? '', $allowedSort, true)
-            ? $params['sort_by']
-            : 'published_at';
-        $sortOrder    = strtoupper($params['sort_order'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
+        $perPage = isset($params['per_page']) ? (int) $params['per_page'] : 20;
+        if ($perPage < 1)   { $perPage = 1; }
+        if ($perPage > 100) { $perPage = 100; }
 
-        // ── Build WHERE conditions ──────────────────────────
-        $where  = [];
-        $binds  = [];
+        $offset = ($page - 1) * $perPage;
 
-        // Date filter
+        $allowedSort = ['published_at', 'fetched_at', 'description_len', 'title', 'id'];
+        $sortByInput = isset($params['sort_by']) ? $params['sort_by'] : '';
+        if (in_array($sortByInput, $allowedSort, true)) {
+            $sortBy = $sortByInput;
+        } else {
+            $sortBy = 'published_at';
+        }
+
+        $sortOrderInput = isset($params['sort_order']) ? strtoupper($params['sort_order']) : 'DESC';
+        if ($sortOrderInput === 'ASC') {
+            $sortOrder = 'ASC';
+        } else {
+            $sortOrder = 'DESC';
+        }
+
+        $where = [];
+        $binds = [];
+
         if (!empty($params['date_from'])) {
             $where[]             = 'published_at >= :date_from';
             $binds[':date_from'] = $params['date_from'];
@@ -64,7 +49,6 @@ class ArticleRepository
             $binds[':date_to'] = $params['date_to'];
         }
 
-        // Description length filter
         if (isset($params['desc_len_min']) && $params['desc_len_min'] !== '') {
             $where[]                = 'description_len >= :desc_len_min';
             $binds[':desc_len_min'] = (int) $params['desc_len_min'];
@@ -74,19 +58,15 @@ class ArticleRepository
             $binds[':desc_len_max'] = (int) $params['desc_len_max'];
         }
 
-        // Keyword filter (max 3 keywords)
         $this->applyKeywordFilter($params, $where, $binds);
 
-        // ── Assemble SQL ────────────────────────────────────
         $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
-        // Count total matching rows
-        $countSql = "SELECT COUNT(*) AS total FROM articles $whereClause";
+        $countSql  = "SELECT COUNT(*) AS total FROM articles $whereClause";
         $countStmt = $this->pdo->prepare($countSql);
         $countStmt->execute($binds);
         $total = (int) $countStmt->fetchColumn();
 
-        // Fetch page
         $sql = "
             SELECT id, title, link, description, published_at, fetched_at, description_len
             FROM articles
@@ -107,10 +87,10 @@ class ArticleRepository
         return [
             'data'       => $articles,
             'pagination' => [
-                'page'       => $page,
-                'per_page'   => $perPage,
-                'total'      => $total,
-                'total_pages'=> (int) ceil($total / $perPage),
+                'page'        => $page,
+                'per_page'    => $perPage,
+                'total'       => $total,
+                'total_pages' => (int) ceil($total / $perPage),
             ],
             'sort' => [
                 'sort_by'    => $sortBy,
@@ -119,10 +99,7 @@ class ArticleRepository
         ];
     }
 
-    /**
-     * Get single article by ID.
-     */
-    public function getById(int $id): ?array
+    public function getById(int $id)
     {
         $stmt = $this->pdo->prepare("
             SELECT id, title, link, description, published_at, fetched_at, description_len
@@ -130,28 +107,32 @@ class ArticleRepository
         ");
         $stmt->execute([':id' => $id]);
         $row = $stmt->fetch();
-        return $row ?: null;
+
+        if ($row === false) {
+            return null;
+        }
+
+        return $row;
     }
 
-    /**
-     * Get DB stats.
-     */
     public function stats(): array
     {
         $row = $this->pdo->query("
             SELECT
-                COUNT(*)                          AS total_articles,
-                MIN(published_at)                 AS earliest,
-                MAX(published_at)                 AS latest,
-                ROUND(AVG(description_len))       AS avg_desc_len,
-                MAX(fetched_at)                   AS last_fetched
+                COUNT(*)                    AS total_articles,
+                MIN(published_at)           AS earliest,
+                MAX(published_at)           AS latest,
+                ROUND(AVG(description_len)) AS avg_desc_len,
+                MAX(fetched_at)             AS last_fetched
             FROM articles
         ")->fetch();
 
-        return $row ?: [];
-    }
+        if ($row === false) {
+            return [];
+        }
 
-    // ─── Private helpers ─────────────────────────────────────
+        return $row;
+    }
 
     private function applyKeywordFilter(array $params, array &$where, array &$binds): void
     {
@@ -159,44 +140,41 @@ class ArticleRepository
             return;
         }
 
-        // Parse keywords — comma-separated, max 3
-        $raw = array_map('trim', explode(',', $params['keywords']));
-        $raw = array_filter($raw, fn($k) => $k !== '');
-        $keywords = array_slice($raw, 0, 3);
+        $raw      = array_map('trim', explode(',', $params['keywords']));
+        $filtered = [];
+        foreach ($raw as $k) {
+            if ($k !== '') {
+                $filtered[] = $k;
+            }
+        }
+        $keywords = array_slice($filtered, 0, 3);
 
         if (empty($keywords)) {
             return;
         }
 
-        $logic = strtoupper($params['keyword_logic'] ?? 'AND');
+        $logic = isset($params['keyword_logic']) ? strtoupper($params['keyword_logic']) : 'AND';
         if (!in_array($logic, ['AND', 'OR', 'NOT'], true)) {
             $logic = 'AND';
         }
 
-        // Build LIKE conditions for each keyword (search in title + description)
         $conditions = [];
         foreach ($keywords as $i => $kw) {
-            $placeholder = ":kw_$i";
+            $placeholder         = ":kw_$i";
             $binds[$placeholder] = '%' . $this->escapeLike($kw) . '%';
-            $conditions[] = "(title LIKE $placeholder OR description LIKE $placeholder)";
+            $conditions[]        = "(title LIKE $placeholder OR description LIKE $placeholder)";
         }
 
-        switch ($logic) {
-            case 'AND':
-                // All keywords must be present
-                $where[] = '(' . implode(' AND ', $conditions) . ')';
-                break;
-
-            case 'OR':
-                // At least one keyword present
-                $where[] = '(' . implode(' OR ', $conditions) . ')';
-                break;
-
-            case 'NOT':
-                // None of the keywords should be present
-                $negated = array_map(fn($c) => "NOT $c", $conditions);
-                $where[] = '(' . implode(' AND ', $negated) . ')';
-                break;
+        if ($logic === 'AND') {
+            $where[] = '(' . implode(' AND ', $conditions) . ')';
+        } elseif ($logic === 'OR') {
+            $where[] = '(' . implode(' OR ', $conditions) . ')';
+        } elseif ($logic === 'NOT') {
+            $negated = [];
+            foreach ($conditions as $condition) {
+                $negated[] = 'NOT ' . $condition;
+            }
+            $where[] = '(' . implode(' AND ', $negated) . ')';
         }
     }
 

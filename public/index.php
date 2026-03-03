@@ -5,7 +5,6 @@ require_once __DIR__ . '/../src/Database.php';
 require_once __DIR__ . '/../src/RssFetcher.php';
 require_once __DIR__ . '/../src/ArticleRepository.php';
 
-// ── Handle CORS preflight ───────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
@@ -14,10 +13,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// ── Init router ─────────────────────────────────────────────
 $router = new Router();
 
-// ── GET / — API info ────────────────────────────────────────
 $router->get('', function () {
     Router::json([
         'name'    => 'Habr RSS Feed API',
@@ -59,7 +56,6 @@ $router->get('', function () {
     ]);
 });
 
-// ── POST /api/fetch — pull RSS feed ─────────────────────────
 $router->post('/api/fetch', function () {
     try {
         $fetcher = new RssFetcher();
@@ -70,7 +66,6 @@ $router->post('/api/fetch', function () {
     }
 });
 
-// ── GET /api/articles — list with filters ───────────────────
 $router->get('/api/articles', function () {
     try {
         $repo   = new ArticleRepository();
@@ -81,7 +76,6 @@ $router->get('/api/articles', function () {
     }
 });
 
-// ── GET /api/articles/{id} — single article ─────────────────
 $router->get('/api/articles/{id}', function (array $params) {
     try {
         $repo    = new ArticleRepository();
@@ -97,7 +91,6 @@ $router->get('/api/articles/{id}', function (array $params) {
     }
 });
 
-// ── GET /api/stats — mysql statistics ────────────────────
 $router->get('/api/stats', function () {
     try {
         $repo = new ArticleRepository();
@@ -107,5 +100,4 @@ $router->get('/api/stats', function () {
     }
 });
 
-// ── Run ─────────────────────────────────────────────────────
 $router->dispatch();
