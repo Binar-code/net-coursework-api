@@ -17,8 +17,8 @@ class Router
     public function dispatch(): void
     {
         $method = $_SERVER['REQUEST_METHOD'];
-        $uri    = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-        $uri    = rtrim($uri, '/');
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        $uri = rtrim($uri, '/');
         if ($uri === '') {
             $uri = '/';
         }
@@ -46,11 +46,11 @@ class Router
         }
 
         self::json(['error' => 'Not Found', 'available_endpoints' => [
-            'GET  /'                  => 'API info & available endpoints',
-            'POST /api/fetch'         => 'Fetch RSS feed and store in DB',
-            'GET  /api/articles'      => 'List articles (with filters, sorting, pagination)',
+            'GET  /' => 'API info & available endpoints',
+            'POST /api/fetch' => 'Fetch RSS feed and store in DB',
+            'GET  /api/articles' => 'List articles (with filters, sorting, pagination)',
             'GET  /api/articles/{id}' => 'Get single article',
-            'GET  /api/stats'         => 'DB statistics',
+            'GET  /api/stats' => 'DB statistics',
         ]], 404);
     }
 

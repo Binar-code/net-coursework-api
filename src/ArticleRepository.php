@@ -41,20 +41,20 @@ class ArticleRepository
         $binds = [];
 
         if (!empty($params['date_from'])) {
-            $where[]             = 'published_at >= :date_from';
+            $where[] = 'published_at >= :date_from';
             $binds[':date_from'] = $params['date_from'];
         }
         if (!empty($params['date_to'])) {
-            $where[]           = 'published_at <= :date_to';
+            $where[] = 'published_at <= :date_to';
             $binds[':date_to'] = $params['date_to'];
         }
 
         if (isset($params['desc_len_min']) && $params['desc_len_min'] !== '') {
-            $where[]                = 'description_len >= :desc_len_min';
+            $where[] = 'description_len >= :desc_len_min';
             $binds[':desc_len_min'] = (int) $params['desc_len_min'];
         }
         if (isset($params['desc_len_max']) && $params['desc_len_max'] !== '') {
-            $where[]                = 'description_len <= :desc_len_max';
+            $where[] = 'description_len <= :desc_len_max';
             $binds[':desc_len_max'] = (int) $params['desc_len_max'];
         }
 
@@ -62,7 +62,7 @@ class ArticleRepository
 
         $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
-        $countSql  = "SELECT COUNT(*) AS total FROM articles $whereClause";
+        $countSql = "SELECT COUNT(*) AS total FROM articles $whereClause";
         $countStmt = $this->pdo->prepare($countSql);
         $countStmt->execute($binds);
         $total = (int) $countStmt->fetchColumn();
@@ -78,22 +78,22 @@ class ArticleRepository
         foreach ($binds as $k => $v) {
             $stmt->bindValue($k, $v);
         }
-        $stmt->bindValue(':limit',  $perPage, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset,  PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
 
         $articles = $stmt->fetchAll();
 
         return [
-            'data'       => $articles,
+            'data' => $articles,
             'pagination' => [
-                'page'        => $page,
-                'per_page'    => $perPage,
-                'total'       => $total,
+                'page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
                 'total_pages' => (int) ceil($total / $perPage),
             ],
             'sort' => [
-                'sort_by'    => $sortBy,
+                'sort_by' => $sortBy,
                 'sort_order' => $sortOrder,
             ],
         ];
@@ -119,11 +119,11 @@ class ArticleRepository
     {
         $row = $this->pdo->query("
             SELECT
-                COUNT(*)                    AS total_articles,
-                MIN(published_at)           AS earliest,
-                MAX(published_at)           AS latest,
+                COUNT(*) AS total_articles,
+                MIN(published_at) AS earliest,
+                MAX(published_at) AS latest,
                 ROUND(AVG(description_len)) AS avg_desc_len,
-                MAX(fetched_at)             AS last_fetched
+                MAX(fetched_at) AS last_fetched
             FROM articles
         ")->fetch();
 
@@ -140,7 +140,7 @@ class ArticleRepository
             return;
         }
 
-        $raw      = array_map('trim', explode(',', $params['keywords']));
+        $raw = array_map('trim', explode(',', $params['keywords']));
         $filtered = [];
         foreach ($raw as $k) {
             if ($k !== '') {
@@ -160,9 +160,9 @@ class ArticleRepository
 
         $conditions = [];
         foreach ($keywords as $i => $kw) {
-            $placeholder         = ":kw_$i";
+            $placeholder = ":kw_$i";
             $binds[$placeholder] = '%' . $this->escapeLike($kw) . '%';
-            $conditions[]        = "(title LIKE $placeholder OR description LIKE $placeholder)";
+            $conditions[] = "(title LIKE $placeholder OR description LIKE $placeholder)";
         }
 
         if ($logic === 'AND') {

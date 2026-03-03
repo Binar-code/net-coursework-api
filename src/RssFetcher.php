@@ -24,7 +24,7 @@ class RssFetcher
         }
 
         $inserted = 0;
-        $skipped  = 0;
+        $skipped = 0;
 
         $stmt = $this->pdo->prepare("
             INSERT IGNORE INTO articles (title, link, description, published_at, description_len)
@@ -32,17 +32,17 @@ class RssFetcher
         ");
 
         foreach ($xml->channel->item as $item) {
-            $title       = $this->cleanText((string) $item->title);
-            $link        = trim((string) $item->link);
+            $title = $this->cleanText((string) $item->title);
+            $link = trim((string) $item->link);
             $description = $this->cleanText((string) $item->description);
-            $pubDate     = (string) $item->pubDate;
+            $pubDate = (string) $item->pubDate;
             $publishedAt = date('Y-m-d H:i:s', strtotime($pubDate));
 
             $stmt->execute([
-                ':title'           => $title,
-                ':link'            => $link,
-                ':description'     => $description,
-                ':published_at'    => $publishedAt,
+                ':title' => $title,
+                ':link' => $link,
+                ':description' => $description,
+                ':published_at' => $publishedAt,
                 ':description_len' => mb_strlen($description, 'UTF-8'),
             ]);
 
@@ -54,10 +54,10 @@ class RssFetcher
         }
 
         return [
-            'success'  => true,
+            'success' => true,
             'inserted' => $inserted,
-            'skipped'  => $skipped,
-            'total'    => $inserted + $skipped,
+            'skipped' => $skipped,
+            'total' => $inserted + $skipped,
         ];
     }
 
@@ -67,8 +67,8 @@ class RssFetcher
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_TIMEOUT        => 30,
-            CURLOPT_USERAGENT      => 'RSSReader/1.0 (PHP)',
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_USERAGENT => 'RSSReader/1.0 (PHP)',
         ]);
         $body = curl_exec($ch);
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
