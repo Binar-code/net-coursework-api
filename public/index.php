@@ -15,52 +15,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 $router = new Router();
 
-$router->get('', function () {
-    Router::json([
-        'name' => 'API Ленты RSS Habr',
-        'version' => '1.0.0',
-        'endpoints' => [
-            [
-                'method' => 'GET|POST',
-                'path' => '/api/fetch',
-                'description' => 'Загрузить RSS ленту Habr и сохранить новые статьи в БД',
-            ],
-            [
-                'method' => 'GET',
-                'path' => '/api/articles',
-                'description' => 'Список статей с фильтрами, сортировкой, постраничной выдачей и тегами',
-                'params' => [
-                    'page' => 'int — номер страницы (по умолчанию 1)',
-                    'per_page' => 'int — статей на странице (по умолчанию 20, максимум 100)',
-                    'sort_by' => 'string — published_at | fetched_at | description_len | title (по умолчанию published_at)',
-                    'sort_order' => 'string — asc | desc (по умолчанию desc)',
-                    'filter' => 'string — до 3-х условий с логическими связками _AND_, _OR_, _NOT_. Типы: date (дата добавления), desc_len (размер описания), keywords (ключевое слово). Формат: тип=значение_ОПЕРАТОР_тип=значение. Пример: date=2026-01-01..2026-12-31_AND_keywords=Python',
-                ],
-                'fields' => [
-                    'id' => 'int — уникальный ID статьи',
-                    'title' => 'string — название статьи',
-                    'link' => 'string — ссылка на статью',
-                    'description' => 'string — описание статьи',
-                    'published_at' => 'string — дата публикации (ISO)',
-                    'fetched_at' => 'string — дата добавления в БД (ISO)',
-                    'description_len' => 'int — длина описания в символах',
-                    'tags' => 'array — массив тегов статьи ({id, name})',
-                ],
-            ],
-            [
-                'method' => 'GET',
-                'path' => '/api/articles/{id}',
-                'description' => 'Получить одну статью по ID со всеми её тегами',
-            ],
-            [
-                'method' => 'GET',
-                'path' => '/api/stats',
-                'description' => 'Статистика базы данных',
-            ],
-        ],
-    ]);
-});
-
 $router->post('/api/fetch', function () {
     try {
         $fetcher = new RssFetcher();
@@ -91,7 +45,7 @@ $router->get('/api/articles', function () {
     }
 });
 
-$router->get('/api/articles/{id}', function (array $params) {
+$router->get('/api/articles/{id}', function ($params) {
     try {
         $repo = new ArticleRepository();
         $article = $repo->getById((int) $params['id']);

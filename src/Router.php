@@ -2,19 +2,19 @@
 
 class Router
 {
-    private array $routes = [];
+    private $routes = [];
 
-    public function get(string $path, callable $handler): void
+    public function get($path, $handler)
     {
         $this->routes['GET'][$path] = $handler;
     }
 
-    public function post(string $path, callable $handler): void
+    public function post($path, $handler)
     {
         $this->routes['POST'][$path] = $handler;
     }
 
-    public function dispatch(): void
+    public function dispatch()
     {
         $method = $_SERVER['REQUEST_METHOD'];
         $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -30,7 +30,7 @@ class Router
 
         $methodRoutes = isset($this->routes[$method]) ? $this->routes[$method] : [];
         foreach ($methodRoutes as $route => $handler) {
-            $pattern = preg_replace('#\{(\w+)\}#', '(?P<$1>[^/]+)', $route);
+            $pattern = preg_replace('#\{(\w+)}#', '(?P<$1>[^/]+)', $route);
             $pattern = "#^{$pattern}$#";
 
             if (preg_match($pattern, $uri, $matches)) {
@@ -46,7 +46,6 @@ class Router
         }
 
         self::json(['error' => 'Не найдено', 'available_endpoints' => [
-            'GET  /' => 'Информация об API и доступных конечных точках',
             'GET|POST /api/fetch' => 'Загрузить RSS ленту и сохранить в БД',
             'GET  /api/articles' => 'Список статей (с фильтрами, сортировкой, постраничной выдачей)',
             'GET  /api/articles/{id}' => 'Получить одну статью',
@@ -54,7 +53,7 @@ class Router
         ]], 404);
     }
 
-    public static function json($data, int $code = 200): void
+    public static function json($data, $code = 200)
     {
         http_response_code($code);
         header('Content-Type: application/json; charset=utf-8');

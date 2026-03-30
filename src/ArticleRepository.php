@@ -4,14 +4,14 @@ require_once __DIR__ . '/Database.php';
 
 class ArticleRepository
 {
-    private PDO $pdo;
+    private $pdo;
 
     public function __construct()
     {
         $this->pdo = Database::connect();
     }
 
-    public function list(array $params): array
+    public function list($params)
     {
         $page = isset($params['page']) ? (int) $params['page'] : 1;
         if ($page < 1) { $page = 1; }
@@ -23,7 +23,7 @@ class ArticleRepository
         $offset = ($page - 1) * $perPage;
 
         $allowedSort = ['published_at', 'fetched_at', 'description_len', 'title', 'id'];
-        $sortByInput = isset($params['sort_by']) ? $params['sort_by'] : '';
+        $sortByInput = $params['sort_by'] ?? '';
         if (in_array($sortByInput, $allowedSort, true)) {
             $sortBy = $sortByInput;
         } else {
@@ -74,7 +74,6 @@ class ArticleRepository
 
         $articles = $stmt->fetchAll();
 
-        // Load tags for each article
         foreach ($articles as &$article) {
             $article['tags'] = $this->getArticleTags($article['id']);
         }
@@ -94,7 +93,7 @@ class ArticleRepository
         ];
     }
 
-    public function getById(int $id)
+    public function getById($id)
     {
         $stmt = $this->pdo->prepare("
             SELECT id, title, link, description, published_at, fetched_at, description_len
@@ -112,7 +111,7 @@ class ArticleRepository
         return $row;
     }
 
-    public function stats(): array
+    public function stats()
     {
         $row = $this->pdo->query("
             SELECT
@@ -131,7 +130,7 @@ class ArticleRepository
         return $row;
     }
 
-    private function parseFilter(string $filter, array &$binds): string
+    private function parseFilter($filter, &$binds)
     {
         $parts = preg_split('/(_AND_|_OR_|_NOT_)/', $filter, -1, PREG_SPLIT_DELIM_CAPTURE);
 
@@ -174,7 +173,7 @@ class ArticleRepository
         return $result;
     }
 
-    private function buildFilterCondition(string $segment, int $index, array &$binds): string
+    private function buildFilterCondition($segment, $index, &$binds)
     {
         $pos = strpos($segment, '=');
         if ($pos === false) return '';
@@ -196,7 +195,7 @@ class ArticleRepository
         }
     }
 
-    private function buildDateCondition(string $value, int $index, array &$binds): string
+    private function buildDateCondition($value, $index, &$binds)
     {
         if (strpos($value, '..') !== false) {
             [$from, $to] = explode('..', $value, 2);
@@ -211,7 +210,7 @@ class ArticleRepository
         return "(fetched_at >= :df$index)";
     }
 
-    private function buildDescLenCondition(string $value, int $index, array &$binds): string
+    private function buildDescLenCondition($value, $index, &$binds)
     {
         if (strpos($value, '..') !== false) {
             [$min, $max] = explode('..', $value, 2);
@@ -223,7 +222,7 @@ class ArticleRepository
         return "(description_len >= :dl$index)";
     }
 
-    private function buildKeywordCondition(string $value, int $index, array &$binds): string
+    private function buildKeywordCondition($value, $index, &$binds)
     {
         $escaped = '%' . $this->escapeLike($value) . '%';
         $binds[":kwt$index"] = $escaped;
@@ -231,12 +230,12 @@ class ArticleRepository
         return "(title LIKE :kwt$index OR description LIKE :kwd$index)";
     }
 
-    private function escapeLike(string $value): string
+    private function escapeLike($value)
     {
         return str_replace(['%', '_', '\\'], ['\\%', '\\_', '\\\\'], $value);
     }
 
-    private function getArticleTags(int $articleId): array
+    private function getArticleTags($articleId)
     {
         $stmt = $this->pdo->prepare("
             SELECT t.id, t.name

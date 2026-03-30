@@ -4,8 +4,8 @@ require_once __DIR__ . '/Database.php';
 
 class RssFetcher
 {
-    private PDO $pdo;
-    private string $feedUrl;
+    private $pdo;
+    private $feedUrl;
 
     public function __construct()
     {
@@ -16,7 +16,7 @@ class RssFetcher
         $this->feedUrl = $url;
     }
 
-    public function fetch(): array
+    public function fetch()
     {
         $xml = $this->loadFeed();
         if ($xml === false) {
@@ -69,7 +69,6 @@ class RssFetcher
             }
             $articleId = (int) $articleRow['id'];
 
-            $categories = $item->children('http://purl.org/rss/1.0/modules/content/');
             foreach ($item->category as $category) {
                 $tagName = $this->cleanText((string) $category);
                 if ($tagName !== '') {
@@ -130,14 +129,14 @@ class RssFetcher
         return $xml;
     }
 
-    private function cleanText(string $text): string
+    private function cleanText($text)
     {
         $text = strip_tags($text);
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         return trim($text);
     }
 
-    private function cleanUrl(string $url): string
+    private function cleanUrl($url)
     {
         $url = html_entity_decode($url, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $url = str_replace('\\/', '/', $url);
